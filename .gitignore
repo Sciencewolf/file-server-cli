@@ -7,6 +7,9 @@
 *.o
 *.obj
 
+.idea
+cmake-build-verify
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -67,3 +70,8 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
