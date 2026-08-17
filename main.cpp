@@ -64,7 +64,7 @@ static json get_all_files() {
 }
 
 static std::string zero_arg() {
-    return "Usage: file_server_cli.exe <option>";
+    return "Usage: fscli.exe <option>";
 }
 
 static std::string options() {
