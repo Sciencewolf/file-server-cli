@@ -1,8 +1,7 @@
 #include <cpr/cpr.h>
-#include <dotenv.h>
 #include <nlohmann/json.hpp>
 
-#include <cstdlib>
+#include <format>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -24,7 +23,7 @@ int main(int argc, char** argv) {
     if (static_cast<std::string>(argv[1]) == "get") {
         try {
             int cnt = 1;
-            const json files = get_all_files()["files"];
+            const json files = get_all_files().at("files");
 
             for (const auto& file : files) {
                 std::cout << cnt++ << ": " << file << std::endl;
@@ -40,16 +39,7 @@ int main(int argc, char** argv) {
 }
 
 static json get_all_files() {
-    const std::string envPath =
-        std::string(FILE_SERVER_CLI_SOURCE_DIR) + "/.env";
-
-    dotenv::init(envPath.c_str());
-
-    const char* url = std::getenv("ALL");
-
-    if (url == nullptr) {
-        throw std::runtime_error("ALL is not set in .env file");
-    }
+    const std::string url = "https://files.martonaron.dev/all";
 
     const cpr::Response res = cpr::Get(cpr::Url{url});
 
