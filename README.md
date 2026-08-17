@@ -4,12 +4,6 @@ CLI version of https://github.com/Sciencewolf/file-server-raspberry-pi.
 
 ## Setup
 
-- Add a `.env` file with:
-
-```env
-ALL=...
-```
-
 - Configure the project:
 
 ```sh
