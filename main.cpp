@@ -1,11 +1,12 @@
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <fstream>
 
 using json = nlohmann::json;
 
@@ -17,12 +18,16 @@ static std::string example();
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
+        std::cout << zero_arg() << std::endl
+                  << options() << std::endl
+                  << example() << std::endl;
 
         return 0;
     }
 
-    if (static_cast<std::string>(argv[1]) == "get" && argc == 2) {
+    const std::string command = argv[1];
+
+    if (command == "get" && argc == 2) {
         try {
             int cnt = 1;
             const json files = get_all_files().at("files");
@@ -35,9 +40,11 @@ int main(int argc, char** argv) {
             std::cerr << "Error: " << e.what() << '\n';
             return 1;
         }
+
+        return 0;
     }
 
-    if (static_cast<std::string>(argv[1]) == "get" && argc == 3) {
+    if (command == "get" && argc == 3) {
         try {
             const json files = get_all_files().at("files");
 
@@ -55,7 +62,13 @@ int main(int argc, char** argv) {
             std::cerr << "Error: " << e.what() << '\n';
             return 1;
         }
+
+        return 0;
     }
+
+    std::cout << zero_arg() << std::endl
+              << options() << std::endl
+              << example() << std::endl;
 
     return 0;
 }
@@ -65,10 +78,13 @@ static json get_all_files() {
 
     const cpr::Response res = cpr::Get(cpr::Url{url});
 
-    if (res.error)
-    {
+    if (res.error) {
+        throw std::runtime_error("HTTP error: " + res.error.message);
+    }
+
+    if (res.status_code < 200 || res.status_code >= 300) {
         throw std::runtime_error(
-            "HTTP error: " + res.error.message
+            std::format("HTTP status error: {}", res.status_code)
         );
     }
 
@@ -76,19 +92,43 @@ static json get_all_files() {
 }
 
 static void get_file(const std::string& file_name) {
-    const std::string url = std::format("https://files.martonaron.dev/get/{}", file_name);
-    std::ofstream file(file_name, std::ios::binary);
+    const std::string url = std::format(
+        "https://files.martonaron.dev/get/{}",
+        file_name
+    );
+
+    const std::filesystem::path project_root = PROJECT_ROOT;
+    const std::filesystem::path download_dir = project_root / "download";
+
+    std::filesystem::create_directories(download_dir);
+
+    const std::filesystem::path safe_file_name = std::filesystem::path(file_name).filename();
+
+    if (safe_file_name.empty()) {
+        throw std::runtime_error("Invalid file name");
+    }
+
+    const std::filesystem::path file_path = download_dir / safe_file_name;
+
+    std::ofstream file(file_path, std::ios::binary);
 
     if (!file.is_open()) {
-        throw std::runtime_error("Error opening file: " + file_name);
+        throw std::runtime_error("Error opening file: " + file_path.string());
     }
 
     const cpr::Response res = cpr::Download(file, cpr::Url{url});
+
     if (res.error) {
         throw std::runtime_error("HTTP error: " + res.error.message);
     }
 
-    std::cout << "File downloaded " << file_name << std::endl;
+    if (res.status_code < 200 || res.status_code >= 300) {
+        throw std::runtime_error(
+            std::format("HTTP status error: {}", res.status_code)
+        );
+    }
+
+    std::cout << "File downloaded: " << file_path.string() << std::endl;
 }
 
 static std::string zero_arg() {
@@ -96,12 +136,12 @@ static std::string zero_arg() {
 }
 
 static std::string options() {
-    std::string opt1 = "get";
-    std::string opt2 = "get <filename_index>";
+    const std::string opt1 = "get";
+    const std::string opt2 = "get <filename_index>";
 
     return std::format("Options: \n\t- {} \n\t- {}", opt1, opt2);
 }
 
 static std::string example() {
-    return std::format("Example: \n\t > file_server_cli.exe get\n\t > file_server_cli.exe get 1");
+    return "Example: \n\t > fscli.exe get\n\t > fscli.exe get 1";
 }

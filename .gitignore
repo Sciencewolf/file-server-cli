@@ -7,6 +7,7 @@
 *.o
 *.obj
 
+download
 .idea
 cmake-build-verify
 

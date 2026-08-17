@@ -68,6 +68,14 @@ add_executable(
     main.cpp
 )
 
+# Projekt root átadása a C++ kódnak
+# Így a program mindig a projekt root/download mappába fog menteni.
+target_compile_definitions(
+    file_server_cli
+    PRIVATE
+    PROJECT_ROOT="${PROJECT_SOURCE_DIR}"
+)
+
 target_link_libraries(
     file_server_cli
     PRIVATE
