@@ -11,37 +11,44 @@
 using json = nlohmann::json;
 
 static json get_all_files();
-static void get_file(const std::string& file_name);
+static void download_file(const std::string& file_name);
+static void upload_file(const std::string& path);
+static void delete_file(const std::string& filename);
+static int print_files();
 static std::string zero_arg();
 static std::string options();
 static std::string example();
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cout << zero_arg() << std::endl
-                  << options() << std::endl
-                  << example() << std::endl;
+        std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
 
         return 0;
     }
 
     const std::string command = argv[1];
 
-    if (command == "get" && argc == 2) {
-        try {
-            int cnt = 1;
-            const json files = get_all_files().at("files");
-
-            for (const auto& file : files) {
-                std::cout << cnt++ << ": " << file << std::endl;
-            }
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << '\n';
-            return 1;
-        }
+    if (command == "up" && argc == 3) {
+        upload_file(argv[2]);
 
         return 0;
+    }
+
+    if (command == "del" && argc == 3) {
+        const json files = get_all_files().at("files");
+        const int index = std::stoi(argv[2]) - 1;
+
+        if (index < 0 || index >= static_cast<int>(files.size())) {
+            throw std::out_of_range("Invalid file index");
+        }
+
+        delete_file(files.at(index).get<std::string>());
+
+        return 0;
+    }
+
+    if (command == "del" || command == "get" && argc == 2) {
+        return print_files();
     }
 
     if (command == "get" && argc == 3) {
@@ -56,7 +63,7 @@ int main(int argc, char** argv) {
 
             const std::string file_name = files.at(index).get<std::string>();
 
-            get_file(file_name);
+            download_file(file_name);
         }
         catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << '\n';
@@ -66,9 +73,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    std::cout << zero_arg() << std::endl
-              << options() << std::endl
-              << example() << std::endl;
+    std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
 
     return 0;
 }
@@ -83,19 +88,14 @@ static json get_all_files() {
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(
-            std::format("HTTP status error: {}", res.status_code)
-        );
+        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
     }
 
     return json::parse(res.text);
 }
 
-static void get_file(const std::string& file_name) {
-    const std::string url = std::format(
-        "https://files.martonaron.dev/get/{}",
-        file_name
-    );
+static void download_file(const std::string& file_name) {
+    const std::string url = std::format("https://files.martonaron.dev/get/{}", file_name);
 
     const std::filesystem::path project_root = PROJECT_ROOT;
     const std::filesystem::path download_dir = project_root / "download";
@@ -123,16 +123,58 @@ static void get_file(const std::string& file_name) {
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(
-            std::format("HTTP status error: {}", res.status_code)
-        );
+        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
     }
 
     std::cout << "File downloaded: " << file_path.string() << std::endl;
 }
 
+static void upload_file(const std::string& path) {
+    const std::string url = "https://files.martonaron.dev/upload";
+
+    cpr::Response res = cpr::Post(cpr::Url{url}, cpr::Multipart{{"file", cpr::File{path}}});
+
+    if (res.error) {
+        throw std::runtime_error("HTTP error: " + res.error.message);
+    }
+
+    if (res.status_code < 200 || res.status_code >= 300) {
+        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
+    }
+
+    std::cout << json::parse(res.text).at("info") << std::endl;
+
+}
+
+static void delete_file(const std::string& filename) {
+    const std::string url = std::format("https://files.martonaron.dev/delete/{}", filename);
+
+    // cpr::Response res = cpr::Get(cpr::Url{url});
+
+    // const std::string info = json::parse(res.text).at("info");
+
+    std::cerr << "Under development" << std::endl;
+}
+
+static int print_files() {
+    try {
+        int cnt = 1;
+        const json files = get_all_files().at("files");
+
+        for (const auto& file : files) {
+            std::cout << cnt++ << ": " << file << std::endl;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}
+
 static std::string zero_arg() {
-    return "Usage: fscli.exe <option>";
+    return "Usage: fscli <option>";
 }
 
 static std::string options() {

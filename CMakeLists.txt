@@ -8,10 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
-# =========================================================
-# STATIC LIBRARIES
-# =========================================================
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 set(CPR_USE_SYSTEM_CURL OFF CACHE BOOL "" FORCE)
@@ -23,9 +19,6 @@ if(WIN32)
     set(CPR_FORCE_WINSSL_BACKEND ON CACHE BOOL "" FORCE)
 endif()
 
-# =========================================================
-# WINDOWS / MSVC STATIC RUNTIME
-# =========================================================
 
 if(MSVC)
     set(
@@ -36,9 +29,6 @@ if(MSVC)
     )
 endif()
 
-# =========================================================
-# CPR
-# =========================================================
 
 FetchContent_Declare(
     cpr
@@ -48,9 +38,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(cpr)
 
-# =========================================================
-# JSON
-# =========================================================
 
 FetchContent_Declare(
     json
@@ -59,17 +46,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(json)
 
-# =========================================================
-# EXECUTABLE
-# =========================================================
 
 add_executable(
     file_server_cli
     main.cpp
 )
 
-# Projekt root átadása a C++ kódnak
-# Így a program mindig a projekt root/download mappába fog menteni.
 target_compile_definitions(
     file_server_cli
     PRIVATE
