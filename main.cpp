@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -17,6 +18,7 @@ static void delete_file(const std::string& filename);
 static int print_files();
 static std::string zero_arg();
 static std::string options();
+static void keywords();
 static std::string example();
 
 int main(int argc, char** argv) {
@@ -27,6 +29,12 @@ int main(int argc, char** argv) {
     }
 
     const std::string command = argv[1];
+
+    if (command == "words" && argc == 2) {
+        keywords();
+
+        return 0;
+    }
 
     if (command == "up" && argc == 3) {
         upload_file(argv[2]);
@@ -182,6 +190,16 @@ static std::string options() {
     const std::string opt2 = "get <filename_index>";
 
     return std::format("Options: \n\t- {} \n\t- {}", opt1, opt2);
+}
+
+static void keywords() {
+    std::vector<std::string> ls_keywords = {"get", "up", "del"};
+
+    std::cout << "Keywords: \n" << std::endl;
+
+    for (const std::string& keyword : ls_keywords) {
+        std::cout << keyword << std::endl;
+    }
 }
 
 static std::string example() {
