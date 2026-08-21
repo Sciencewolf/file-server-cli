@@ -50,6 +50,7 @@ FetchContent_MakeAvailable(json)
 add_executable(
     file_server_cli
     main.cpp
+        main.cpp
 )
 
 target_compile_definitions(

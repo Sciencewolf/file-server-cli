@@ -157,11 +157,11 @@ static void upload_file(const std::string& path) {
 static void delete_file(const std::string& filename) {
     const std::string url = std::format("https://files.martonaron.dev/delete/{}", filename);
 
-    // cpr::Response res = cpr::Get(cpr::Url{url});
+    cpr::Response res = cpr::Get(cpr::Url{url});
 
-    // const std::string info = json::parse(res.text).at("info");
+    const std::string info = json::parse(res.text).at("info");
 
-    std::cerr << "Under development" << std::endl;
+    std::cerr << info << std::endl;
 }
 
 static int print_files() {
@@ -203,5 +203,5 @@ static void keywords() {
 }
 
 static std::string example() {
-    return "Example: \n\t > fscli.exe get\n\t > fscli.exe get 1";
+    return "Example: \n\t > fscli get\n\t > fscli get 1";
 }
