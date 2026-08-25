@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if (command == "del" || command == "get" && argc == 2) {
+    if ((command == "del" || command == "ls") && argc == 2) {
         return print_files();
     }
 
@@ -186,14 +186,14 @@ static std::string zero_arg() {
 }
 
 static std::string options() {
-    const std::string opt1 = "get";
+    const std::string opt1 = "ls";
     const std::string opt2 = "get <filename_index>";
 
     return std::format("Options: \n\t- {} \n\t- {}", opt1, opt2);
 }
 
 static void keywords() {
-    std::vector<std::string> ls_keywords = {"get", "up", "del"};
+    std::vector<std::string> ls_keywords = {"get", "up", "del", "ls"};
 
     std::cout << "Keywords: \n" << std::endl;
 
@@ -203,5 +203,5 @@ static void keywords() {
 }
 
 static std::string example() {
-    return "Example: \n\t > fscli get\n\t > fscli get 1";
+    return "Example: \n\t > fscli ls\n\t > fscli get 1";
 }
