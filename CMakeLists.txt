@@ -8,18 +8,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
+# --------------------------------------------------
+# Dependencies
+# --------------------------------------------------
+
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 set(CPR_USE_SYSTEM_CURL OFF CACHE BOOL "" FORCE)
 set(CPR_CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
 set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
-# Windows alatt a Windows saját SSL backendje
+# Windows: use the native Windows SSL backend
 if(WIN32)
     set(CPR_FORCE_WINSSL_BACKEND ON CACHE BOOL "" FORCE)
 endif()
 
-
+# MSVC runtime
 if(MSVC)
     set(
         CMAKE_MSVC_RUNTIME_LIBRARY
@@ -29,6 +33,9 @@ if(MSVC)
     )
 endif()
 
+# --------------------------------------------------
+# CPR
+# --------------------------------------------------
 
 FetchContent_Declare(
     cpr
@@ -38,6 +45,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(cpr)
 
+# --------------------------------------------------
+# nlohmann/json
+# --------------------------------------------------
 
 FetchContent_Declare(
     json
@@ -46,11 +56,13 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(json)
 
+# --------------------------------------------------
+# Executable
+# --------------------------------------------------
 
 add_executable(
     file_server_cli
     main.cpp
-        main.cpp
 )
 
 target_compile_definitions(
@@ -65,6 +77,22 @@ target_link_libraries(
     cpr::cpr
     nlohmann_json::nlohmann_json
 )
+
+# --------------------------------------------------
+# Windows / MinGW
+# --------------------------------------------------
+
+if(WIN32 AND MINGW)
+    target_link_options(
+        file_server_cli
+        PRIVATE
+        -no-pthread
+    )
+endif()
+
+# --------------------------------------------------
+# Output
+# --------------------------------------------------
 
 set_target_properties(
     file_server_cli
