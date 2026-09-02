@@ -43,14 +43,22 @@ int main(int argc, char** argv) {
     }
 
     if (command == "del" && argc == 3) {
-        const json files = get_all_files().at("files");
-        const int index = std::stoi(argv[2]) - 1;
+        try {
+            const json files = get_all_files().at("files");
+            const int index = std::stoi(argv[2]) - 1;
 
-        if (index < 0 || index >= static_cast<int>(files.size())) {
-            throw std::out_of_range("Invalid file index");
+            if (index < 0 || index >= static_cast<int>(files.size())) {
+                throw std::out_of_range("Invalid file index");
+            }
+
+            const std::string filename = files.at(index).get<std::string>();
+
+            delete_file(filename);
         }
-
-        delete_file(files.at(index).get<std::string>());
+        catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << '\n';
+            return 1;
+        }
 
         return 0;
     }
@@ -157,11 +165,25 @@ static void upload_file(const std::string& path) {
 static void delete_file(const std::string& filename) {
     const std::string url = std::format("https://files.martonaron.dev/delete/{}", filename);
 
-    cpr::Response res = cpr::Get(cpr::Url{url});
+    const cpr::Response res = cpr::Delete(cpr::Url{url});
 
-    const std::string info = json::parse(res.text).at("info");
+    if (res.error) {
+        throw std::runtime_error("HTTP error: " + res.error.message);
+    }
 
-    std::cerr << info << std::endl;
+    if (res.status_code < 200 || res.status_code >= 300) {
+        throw std::runtime_error(
+            std::format(
+                "HTTP status error: {} - {}",
+                res.status_code,
+                res.text
+            )
+        );
+    }
+
+    const json response = json::parse(res.text);
+
+    std::cout << response.at("info").get<std::string>() << std::endl;
 }
 
 static int print_files() {
