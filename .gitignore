@@ -11,6 +11,8 @@ download
 .idea
 cmake-build-verify
 
+.DS_Store
+
 # Precompiled Headers
 *.gch
 *.pch
