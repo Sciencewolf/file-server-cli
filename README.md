@@ -15,17 +15,3 @@ cmake -S . -B build -G Ninja   -DCMAKE_BUILD_TYPE=Release   -DCMAKE_C_COMPILER=g
 ```sh
 cmake --build build
 ```
-
-## Usage
-
-```sh
-fscli get
-```
-
-Get all files from the server.
-
-```sh
-fscli get [filename_number]
-```
-
-Get a specific file by the index from the `/get` list.
