@@ -15,6 +15,7 @@ static json get_all_files();
 static void download_file(const std::string& file_name);
 static void upload_file(const std::string& path);
 static void delete_file(const std::string& filename);
+static void rename_file(const std::string old_name_index, const std::string new_name);
 static int print_files();
 static std::string zero_arg();
 static std::string options();
@@ -42,16 +43,27 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    if (command == "rn" && argc == 4) {
+        rename_file(argv[2], argv[3]);
+
+        return 0;
+    }
+
     if (command == "del" && argc == 3) {
         try {
             const json files = get_all_files().at("files");
+
+            for(const auto& file : files) {
+                std::cout << file["name"] << std::endl;
+            }
+
             const int index = std::stoi(argv[2]) - 1;
 
             if (index < 0 || index >= static_cast<int>(files.size())) {
                 throw std::out_of_range("Invalid file index");
             }
 
-            const std::string filename = files.at(index).get<std::string>();
+            const std::string filename = files.at(index).at("name").get<std::string>();
 
             delete_file(filename);
         }
@@ -63,7 +75,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if ((command == "del" || command == "ls") && argc == 2) {
+    if ((command == "del" || command == "ls" || command == "rn" || command == "get") && argc == 2) {
         return print_files();
     }
 
@@ -71,13 +83,17 @@ int main(int argc, char** argv) {
         try {
             const json files = get_all_files().at("files");
 
+            for(const auto& file : files) {
+                std::cout << file["name"] << std::endl;
+            }
+
             const int index = std::stoi(argv[2]) - 1;
 
             if (index < 0 || index >= static_cast<int>(files.size())) {
                 throw std::out_of_range("Invalid file index");
             }
 
-            const std::string file_name = files.at(index).get<std::string>();
+            const std::string file_name = files.at(index).at("name").get<std::string>();
 
             download_file(file_name);
         }
@@ -186,13 +202,43 @@ static void delete_file(const std::string& filename) {
     std::cout << response.at("info").get<std::string>() << std::endl;
 }
 
+static void rename_file(const std::string old_name_index, const std::string new_name) {
+    const json files = get_all_files().at("files");
+
+    const std::string old_name = files.at(std::stoi(old_name_index) - 1).at("name").get<std::string>();
+
+    std::string new_name_sanitized = std::format("{}.{}", new_name, old_name.substr(old_name.find_last_of('.') + 1));
+
+    const std::string url = std::format("https://files.martonaron.dev/rename/{}?val={}", old_name, new_name_sanitized);
+
+    const cpr::Response res = cpr::Get(cpr::Url{url});
+
+    if (res.error) {
+        throw std::runtime_error("HTTP error: " + res.error.message);
+    }
+
+    if (res.status_code < 200 || res.status_code >= 300) {
+        throw std::runtime_error(
+            std::format(
+                "HTTP status error: {} - {}",
+                res.status_code,
+                res.text
+            )
+        );
+    }
+
+    const json response = json::parse(res.text);
+
+    std::cout << response.at("info").get<std::string>() << std::endl;
+}
+
 static int print_files() {
     try {
         int cnt = 1;
         const json files = get_all_files().at("files");
 
         for (const auto& file : files) {
-            std::cout << cnt++ << ": " << file << std::endl;
+            std::cout << cnt++ << ": " << file["name"] << std::endl;
         }
     }
     catch (const std::exception& e) {
@@ -210,12 +256,15 @@ static std::string zero_arg() {
 static std::string options() {
     const std::string opt1 = "ls";
     const std::string opt2 = "get <filename_index>";
+    const std::string opt3 = "up <path_to_file>";
+    const std::string opt4 = "del <filename_index>";
+    const std::string opt5 = "rn <old_filename_index> <new_filename>";
 
-    return std::format("Options: \n\t- {} \n\t- {}", opt1, opt2);
+    return std::format("Options: \n\t- {} \n\t- {} \n\t- {} \n\t- {} \n\t- {}", opt1, opt2, opt3, opt4, opt5);
 }
 
 static void keywords() {
-    std::vector<std::string> ls_keywords = {"get", "up", "del", "ls"};
+    const std::vector<std::string> ls_keywords = {"get", "up", "del", "ls", "rn", "words"};
 
     std::cout << "Keywords: \n" << std::endl;
 
@@ -225,5 +274,5 @@ static void keywords() {
 }
 
 static std::string example() {
-    return "Example: \n\t > fscli ls\n\t > fscli get 1";
+    return "Example: \n\t > fscli ls\n\t > fscli get 1\n\t > fscli rn 1 'new_file.txt'";
 }
