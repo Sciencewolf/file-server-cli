@@ -1,8 +1,8 @@
 #include <winres.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,3,2,0
-PRODUCTVERSION  1,3,2,0
+FILEVERSION     1,3,3,0
+PRODUCTVERSION  1,3,3,0
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
@@ -15,12 +15,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Marton Aron"
             VALUE "FileDescription",  "File Server CLI - manage files on files.martonaron.dev"
-            VALUE "FileVersion",      "1.3.2.0"
+            VALUE "FileVersion",      "1.3.3.0"
             VALUE "InternalName",     "fscli"
             VALUE "LegalCopyright",   "Copyright (C) Marton Aron"
             VALUE "OriginalFilename", "fscli.exe"
             VALUE "ProductName",      "File Server CLI"
-            VALUE "ProductVersion",   "1.3.2.0"
+            VALUE "ProductVersion",   "1.3.3.0"
         END
     END
     BLOCK "VarFileInfo"
