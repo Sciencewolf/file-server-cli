@@ -33,14 +33,16 @@ static void enable_ansi_colors() {
 #endif
 
 namespace Color {
-    constexpr const char* RED = "\033[31m";
-    constexpr const char* GREEN = "\033[32m";
-    constexpr const char* YELLOW = "\033[33m";
-    constexpr const char* BLUE = "\033[34m";
-    constexpr const char* MAGENTA = "\033[35m";
-    constexpr const char* CYAN = "\033[36m";
+    constexpr const char* RED = "\e[1;91m";
+    constexpr const char* GREEN = "\e[1;92m";
+    constexpr const char* YELLOW = "\e[1;93m";
+    constexpr const char* BLUE = "\e[1;94m";
+    constexpr const char* MAGENTA = "\e[1;95m";
+    constexpr const char* CYAN = "\e[1;96m";
     constexpr const char* RESET = "\033[0m";
 }
+
+constexpr const char* VERSION = "v1.3.3";
 
 
 static json get_all_files() {
@@ -88,6 +90,8 @@ static std::filesystem::path get_downloads_dir() {
 }
 
 static void download_file(const std::string& file_name) {
+    std::cout << Color::BLUE << "Downloading file..." << Color::RESET << std::flush;
+    
     const std::string url = std::format("https://files.martonaron.dev/get/{}", file_name);
 
     const std::filesystem::path download_dir = get_downloads_dir();
@@ -118,10 +122,14 @@ static void download_file(const std::string& file_name) {
         throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
     }
 
-    std::cout << "File downloaded: " << file_path.string() << std::endl;
+    std::cout << "\r\033[2K" << std::flush;
+
+    std::cout << Color::BLUE << "File downloaded: " << file_path.string() <<  Color::RESET << std::endl;
 }
 
 static void upload_file(const std::string& path) {
+    std::cout << Color::BLUE << "Uploading file..." << Color::RESET << std::flush;
+
     const std::string url = "https://files.martonaron.dev/upload";
 
     cpr::Response res = cpr::Post(cpr::Url{url}, cpr::Multipart{{"file", cpr::File{path}}});
@@ -134,11 +142,15 @@ static void upload_file(const std::string& path) {
         throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
     }
 
-    std::cout << json::parse(res.text).at("info") << std::endl;
+    std::cout << "\r\033[2K" << std::flush;
+
+    std::cout << Color::BLUE << json::parse(res.text).at("info") << Color::RESET << std::endl;
 
 }
 
 static void delete_file(const std::string& filename) {
+    std::cout << Color::BLUE << "Deleting file..." << Color::RESET << std::flush;
+
     const std::string url = std::format("https://files.martonaron.dev/delete/{}", filename);
 
     const cpr::Response res = cpr::Delete(cpr::Url{url});
@@ -159,10 +171,14 @@ static void delete_file(const std::string& filename) {
 
     const json response = json::parse(res.text);
 
-    std::cout << response.at("info").get<std::string>() << std::endl;
+    std::cout << "\r\033[2K" << std::flush;
+
+    std::cout << Color::GREEN << response.at("info").get<std::string>() << Color::RESET << std::endl;
 }
 
 static void rename_file(const std::string old_name_index, const std::string new_name) {
+    std::cout << Color::BLUE << "Renaming file..." << Color::RESET << std::flush;
+
     const json files = get_all_files().at("files");
 
     const std::string old_name = files.at(std::stoi(old_name_index) - 1).at("name").get<std::string>();
@@ -188,20 +204,31 @@ static void rename_file(const std::string old_name_index, const std::string new_
     }
 
     const json response = json::parse(res.text);
-    std::cout << response.at("info").get<std::string>() << std::endl;
+
+    std::cout << "\r\033[2K" << std::flush;
+
+    std::cout << Color::BLUE << response.at("info").get<std::string>() << Color::RESET << std::endl;
 }
 
 static int print_files() {
     try {
+        std::cout << Color::BLUE << "Fetching file list..." << Color::RESET << std::flush;
+
         int cnt = 1;
         const json files = get_all_files().at("files");
+
+        std::cout << "\r\033[2K" << std::flush;
+
+        std::cout << Color::YELLOW << std::endl;
 
         for (const auto& file : files) {
             std::cout << cnt++ << ": " << file["name"] << std::endl;
         }
+
+        std::cout << Color::RESET << std::endl;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << '\n';
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
 
@@ -218,13 +245,15 @@ static void options() {
     const std::string opt3 = "up <path_to_file>";
     const std::string opt4 = "del <filename_index>";
     const std::string opt5 = "rn <old_filename_index> <new_filename>";
+    const std::string opt6 = "words";
 
     std::cout << Color::GREEN << "\nOptions: " << std::endl;
-    std::cout << "\t- " << opt1 << std::endl;
-    std::cout << "\t- " << opt2 << std::endl;
-    std::cout << "\t- " << opt3 << std::endl;
-    std::cout << "\t- " << opt4 << std::endl;
-    std::cout << "\t- " << opt5 << Color::RESET << std::endl;
+    std::cout << "\t> " << opt1 << std::endl;
+    std::cout << "\t> " << opt2 << std::endl;
+    std::cout << "\t> " << opt3 << std::endl;
+    std::cout << "\t> " << opt4 << std::endl;
+    std::cout << "\t> " << opt5 << std::endl;
+    std::cout << "\t> " << opt6 << Color::RESET << std::endl;
 }
 
 static void keywords() {
@@ -240,11 +269,19 @@ static void keywords() {
 }
 
 static void example() {
-    std::cout << Color::YELLOW << "Example: \n\t > fscli ls\n\t > fscli get 1\n\t > fscli rn 1 'new_file.txt'" << Color::RESET << std::endl;
+    const std::string ex1 = "\t> fscli ls\n";
+    const std::string ex2 = "\t> fscli get 1\n";
+    const std::string ex3 = "\t> fscli rn 1 'new_file'\n";
+    const std::string ex4 = "\t> fscli up 'path_to_file'\n";
+    const std::string ex5 = "\t> fscli del 1\n";
+
+    std::cout << Color::YELLOW << "Example: \n" << ex1 << ex2 << ex3 << ex4 << ex5 << Color::RESET;
 }
 
-static const void version() {
-    std::cout << Color::MAGENTA << "v1.3.2(2026.09.11)\n\n" << Color::RESET;
+static const void about() {
+    std::cout << Color::MAGENTA << VERSION << "\n\n" << Color::RESET;
+    std::cout << Color::CYAN << "File Server CLI - A simple command line interface for file management" << Color::RESET << std::endl;
+    std::cout << Color::CYAN << "GitHub: https://github.com/Sciencewolf/file-server-cli\n" << Color::RESET << std::endl;
 }
 
 static int handle_list(const std::vector<std::string>&) {
@@ -281,7 +318,7 @@ static int handle_delete(const std::vector<std::string>& args) {
         delete_file(filename);
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << '\n';
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
 
@@ -290,6 +327,8 @@ static int handle_delete(const std::vector<std::string>& args) {
 
 static int handle_download(const std::vector<std::string>& args) {
     try {
+        std::cout << Color::BLUE << "Downloading file..." << Color::RESET << std::flush;
+
         const json files = get_all_files().at("files");
 
         const int index = std::stoi(args[0]) - 1;
@@ -303,7 +342,7 @@ static int handle_download(const std::vector<std::string>& args) {
         download_file(file_name);
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << '\n';
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
 
@@ -340,7 +379,10 @@ int main(int argc, char** argv) {
     const std::vector<std::string> args(argv + 1, argv + argc);
 
     if (args.empty()) {
-        version();
+        std::cout << "Loading..." << std::flush;
+        std::cout << "\r\033[2K" << std::flush;
+
+        about();
         print_usage();
 
         return 0;
