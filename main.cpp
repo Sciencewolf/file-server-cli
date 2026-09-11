@@ -11,104 +11,6 @@
 
 using json = nlohmann::json;
 
-static json get_all_files();
-static void download_file(const std::string& file_name);
-static void upload_file(const std::string& path);
-static void delete_file(const std::string& filename);
-static void rename_file(const std::string old_name_index, const std::string new_name);
-static int print_files();
-static std::string zero_arg();
-static std::string options();
-static void keywords();
-static std::string example();
-
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
-
-        return 0;
-    }
-
-    const std::string command = argv[1];
-
-    if (command == "words" && argc == 2) {
-        keywords();
-
-        return 0;
-    }
-
-    if (command == "up" && argc == 3) {
-        upload_file(argv[2]);
-
-        return 0;
-    }
-
-    if (command == "rn" && argc == 4) {
-        rename_file(argv[2], argv[3]);
-
-        return 0;
-    }
-
-    if (command == "del" && argc == 3) {
-        try {
-            const json files = get_all_files().at("files");
-
-            for(const auto& file : files) {
-                std::cout << file["name"] << std::endl;
-            }
-
-            const int index = std::stoi(argv[2]) - 1;
-
-            if (index < 0 || index >= static_cast<int>(files.size())) {
-                throw std::out_of_range("Invalid file index");
-            }
-
-            const std::string filename = files.at(index).at("name").get<std::string>();
-
-            delete_file(filename);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << '\n';
-            return 1;
-        }
-
-        return 0;
-    }
-
-    if ((command == "del" || command == "ls" || command == "rn" || command == "get") && argc == 2) {
-        return print_files();
-    }
-
-    if (command == "get" && argc == 3) {
-        try {
-            const json files = get_all_files().at("files");
-
-            for(const auto& file : files) {
-                std::cout << file["name"] << std::endl;
-            }
-
-            const int index = std::stoi(argv[2]) - 1;
-
-            if (index < 0 || index >= static_cast<int>(files.size())) {
-                throw std::out_of_range("Invalid file index");
-            }
-
-            const std::string file_name = files.at(index).at("name").get<std::string>();
-
-            download_file(file_name);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << '\n';
-            return 1;
-        }
-
-        return 0;
-    }
-
-    std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
-
-    return 0;
-}
 
 static json get_all_files() {
     const std::string url = "https://files.martonaron.dev/all";
@@ -228,7 +130,6 @@ static void rename_file(const std::string old_name_index, const std::string new_
     }
 
     const json response = json::parse(res.text);
-
     std::cout << response.at("info").get<std::string>() << std::endl;
 }
 
@@ -275,4 +176,88 @@ static void keywords() {
 
 static std::string example() {
     return "Example: \n\t > fscli ls\n\t > fscli get 1\n\t > fscli rn 1 'new_file.txt'";
+}
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
+
+        return 0;
+    }
+
+    const std::string command = argv[1];
+
+    if (command == "words" && argc == 2) {
+        keywords();
+
+        return 0;
+    }
+
+    if (command == "up" && argc == 3) {
+        upload_file(argv[2]);
+
+        return 0;
+    }
+
+    if (command == "rn" && argc == 4) {
+        rename_file(argv[2], argv[3]);
+
+        return 0;
+    }
+
+    if (command == "del" && argc == 3) {
+        try {
+            const json files = get_all_files().at("files");
+
+            const int index = std::stoi(argv[2]) - 1;
+
+            if (index < 0 || index >= static_cast<int>(files.size())) {
+                throw std::out_of_range("Invalid file index");
+            }
+
+            const std::string filename = files.at(index).at("name").get<std::string>();
+
+            delete_file(filename);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << '\n';
+            return 1;
+        }
+
+        return 0;
+    }
+
+    if ((command == "del" || command == "ls" || command == "rn" || command == "get") && argc == 2) {
+        return print_files();
+    }
+
+    if (command == "get" && argc == 3) {
+        try {
+            const json files = get_all_files().at("files");
+
+            for(const auto& file : files) {
+                std::cout << file["name"] << std::endl;
+            }
+
+            const int index = std::stoi(argv[2]) - 1;
+
+            if (index < 0 || index >= static_cast<int>(files.size())) {
+                throw std::out_of_range("Invalid file index");
+            }
+
+            const std::string file_name = files.at(index).at("name").get<std::string>();
+
+            download_file(file_name);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << '\n';
+            return 1;
+        }
+
+        return 0;
+    }
+
+    std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
+
+    return 0;
 }
