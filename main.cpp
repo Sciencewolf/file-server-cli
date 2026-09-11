@@ -19,6 +19,19 @@
 
 using json = nlohmann::json;
 
+#if defined(_WIN32)
+static void enable_ansi_colors() {
+    const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+
+    if (stdout_handle == INVALID_HANDLE_VALUE || !GetConsoleMode(stdout_handle, &mode)) {
+        return;
+    }
+
+    SetConsoleMode(stdout_handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+#endif
+
 namespace Color {
     constexpr const char* RED = "\033[31m";
     constexpr const char* GREEN = "\033[32m";
@@ -320,6 +333,10 @@ static void print_usage() {
 }
 
 int main(int argc, char** argv) {
+#if defined(_WIN32)
+    enable_ansi_colors();
+#endif
+
     const std::vector<std::string> args(argv + 1, argv + argc);
 
     if (args.empty()) {
