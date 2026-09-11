@@ -11,6 +11,16 @@
 
 using json = nlohmann::json;
 
+namespace Color {
+    constexpr const char* RED = "\033[31m";
+    constexpr const char* GREEN = "\033[32m";
+    constexpr const char* YELLOW = "\033[33m";
+    constexpr const char* BLUE = "\033[34m";
+    constexpr const char* MAGENTA = "\033[35m";
+    constexpr const char* CYAN = "\033[36m";
+    constexpr const char* RESET = "\033[0m";
+}
+
 
 static json get_all_files() {
     const std::string url = "https://files.martonaron.dev/all";
@@ -150,37 +160,51 @@ static int print_files() {
     return 0;
 }
 
-static std::string zero_arg() {
-    return "Usage: fscli <option>";
+static void zero_arg() {
+    std::cout << Color::BLUE << "Usage: fscli <option>" << Color::RESET;
 }
 
-static std::string options() {
+static void options() {
     const std::string opt1 = "ls";
     const std::string opt2 = "get <filename_index>";
     const std::string opt3 = "up <path_to_file>";
     const std::string opt4 = "del <filename_index>";
     const std::string opt5 = "rn <old_filename_index> <new_filename>";
 
-    return std::format("Options: \n\t- {} \n\t- {} \n\t- {} \n\t- {} \n\t- {}", opt1, opt2, opt3, opt4, opt5);
+    std::cout << Color::GREEN << "\nOptions: " << std::endl;
+    std::cout << "\t- " << opt1 << std::endl;
+    std::cout << "\t- " << opt2 << std::endl;
+    std::cout << "\t- " << opt3 << std::endl;
+    std::cout << "\t- " << opt4 << std::endl;
+    std::cout << "\t- " << opt5 << Color::RESET << std::endl;
 }
 
 static void keywords() {
     const std::vector<std::string> ls_keywords = {"get", "up", "del", "ls", "rn", "words"};
 
-    std::cout << "Keywords: \n" << std::endl;
+    std::cout << Color::GREEN << "Keywords: \n" << std::endl;
 
     for (const std::string& keyword : ls_keywords) {
         std::cout << keyword << std::endl;
     }
+
+    std::cout << Color::RESET << std::endl;
 }
 
-static std::string example() {
-    return "Example: \n\t > fscli ls\n\t > fscli get 1\n\t > fscli rn 1 'new_file.txt'";
+static void example() {
+    std::cout << Color::YELLOW << "Example: \n\t > fscli ls\n\t > fscli get 1\n\t > fscli rn 1 'new_file.txt'" << Color::RESET << std::endl;
+}
+
+static const void version() {
+    std::cout << Color::MAGENTA << "v1.1(2026.09.11)\n\n" << Color::RESET;
 }
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
+        version();
+        zero_arg(); 
+        options();
+        example();
 
         return 0;
     }
@@ -257,7 +281,9 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    std::cout << zero_arg() << std::endl << options() << std::endl << example() << std::endl;
+    zero_arg();
+    options();
+    example();
 
     return 0;
 }
