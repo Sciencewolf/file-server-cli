@@ -244,7 +244,7 @@ static void example() {
 }
 
 static const void version() {
-    std::cout << Color::MAGENTA << "v1.3(2026.09.11)\n\n" << Color::RESET;
+    std::cout << Color::MAGENTA << "v1.3.2(2026.09.11)\n\n" << Color::RESET;
 }
 
 static int handle_list(const std::vector<std::string>&) {

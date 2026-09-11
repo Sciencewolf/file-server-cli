@@ -60,9 +60,16 @@ FetchContent_MakeAvailable(json)
 # Executable
 # --------------------------------------------------
 
+set(FSCLI_SOURCES main.cpp)
+
+if(WIN32)
+    enable_language(RC)
+    list(APPEND FSCLI_SOURCES version.rc)
+endif()
+
 add_executable(
     file_server_cli
-    main.cpp
+    ${FSCLI_SOURCES}
 )
 
 target_link_libraries(
