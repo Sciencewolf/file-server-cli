@@ -1,13 +1,21 @@
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#if defined(_WIN32)
+#include <shlobj.h>
+#endif
 
 using json = nlohmann::json;
 
@@ -38,11 +46,38 @@ static json get_all_files() {
     return json::parse(res.text);
 }
 
+static std::filesystem::path get_downloads_dir() {
+#if defined(_WIN32)
+    PWSTR path = nullptr;
+    const HRESULT result = SHGetKnownFolderPath(FOLDERID_Downloads, 0, nullptr, &path);
+
+    if (FAILED(result)) {
+        throw std::runtime_error("Could not resolve the Downloads folder");
+    }
+
+    const std::filesystem::path downloads_dir(path);
+    CoTaskMemFree(path);
+
+    return downloads_dir;
+#else
+    if (const char* xdg_download_dir = std::getenv("XDG_DOWNLOAD_DIR")) {
+        return std::filesystem::path(xdg_download_dir);
+    }
+
+    const char* home = std::getenv("HOME");
+
+    if (!home) {
+        throw std::runtime_error("HOME environment variable is not set");
+    }
+
+    return std::filesystem::path(home) / "Downloads";
+#endif
+}
+
 static void download_file(const std::string& file_name) {
     const std::string url = std::format("https://files.martonaron.dev/get/{}", file_name);
 
-    const std::filesystem::path project_root = PROJECT_ROOT;
-    const std::filesystem::path download_dir = project_root / "download";
+    const std::filesystem::path download_dir = get_downloads_dir();
 
     std::filesystem::create_directories(download_dir);
 
@@ -196,94 +231,124 @@ static void example() {
 }
 
 static const void version() {
-    std::cout << Color::MAGENTA << "v1.1(2026.09.11)\n\n" << Color::RESET;
+    std::cout << Color::MAGENTA << "v1.3(2026.09.11)\n\n" << Color::RESET;
 }
 
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        version();
-        zero_arg(); 
-        options();
-        example();
+static int handle_list(const std::vector<std::string>&) {
+    return print_files();
+}
 
-        return 0;
-    }
+static int handle_words(const std::vector<std::string>&) {
+    keywords();
+    return 0;
+}
 
-    const std::string command = argv[1];
+static int handle_upload(const std::vector<std::string>& args) {
+    upload_file(args[0]);
+    return 0;
+}
 
-    if (command == "words" && argc == 2) {
-        keywords();
+static int handle_rename(const std::vector<std::string>& args) {
+    rename_file(args[0], args[1]);
+    return 0;
+}
 
-        return 0;
-    }
+static int handle_delete(const std::vector<std::string>& args) {
+    try {
+        const json files = get_all_files().at("files");
 
-    if (command == "up" && argc == 3) {
-        upload_file(argv[2]);
+        const int index = std::stoi(args[0]) - 1;
 
-        return 0;
-    }
-
-    if (command == "rn" && argc == 4) {
-        rename_file(argv[2], argv[3]);
-
-        return 0;
-    }
-
-    if (command == "del" && argc == 3) {
-        try {
-            const json files = get_all_files().at("files");
-
-            const int index = std::stoi(argv[2]) - 1;
-
-            if (index < 0 || index >= static_cast<int>(files.size())) {
-                throw std::out_of_range("Invalid file index");
-            }
-
-            const std::string filename = files.at(index).at("name").get<std::string>();
-
-            delete_file(filename);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << '\n';
-            return 1;
+        if (index < 0 || index >= static_cast<int>(files.size())) {
+            throw std::out_of_range("Invalid file index");
         }
 
-        return 0;
+        const std::string filename = files.at(index).at("name").get<std::string>();
+
+        delete_file(filename);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
     }
 
-    if ((command == "del" || command == "ls" || command == "rn" || command == "get") && argc == 2) {
-        return print_files();
-    }
+    return 0;
+}
 
-    if (command == "get" && argc == 3) {
-        try {
-            const json files = get_all_files().at("files");
+static int handle_download(const std::vector<std::string>& args) {
+    try {
+        const json files = get_all_files().at("files");
 
-            for(const auto& file : files) {
-                std::cout << file["name"] << std::endl;
-            }
+        const int index = std::stoi(args[0]) - 1;
 
-            const int index = std::stoi(argv[2]) - 1;
-
-            if (index < 0 || index >= static_cast<int>(files.size())) {
-                throw std::out_of_range("Invalid file index");
-            }
-
-            const std::string file_name = files.at(index).at("name").get<std::string>();
-
-            download_file(file_name);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error: " << e.what() << '\n';
-            return 1;
+        if (index < 0 || index >= static_cast<int>(files.size())) {
+            throw std::out_of_range("Invalid file index");
         }
 
-        return 0;
+        const std::string file_name = files.at(index).at("name").get<std::string>();
+
+        download_file(file_name);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
     }
 
+    return 0;
+}
+
+using CommandHandler = std::function<int(const std::vector<std::string>&)>;
+
+struct CommandVariant {
+    size_t arg_count;
+    CommandHandler handler;
+};
+
+static const std::unordered_map<std::string, std::vector<CommandVariant>> commands = {
+    {"ls",    {{0, handle_list}}},
+    {"get",   {{0, handle_list}, {1, handle_download}}},
+    {"del",   {{0, handle_list}, {1, handle_delete}}},
+    {"rn",    {{0, handle_list}, {2, handle_rename}}},
+    {"up",    {{1, handle_upload}}},
+    {"words", {{0, handle_words}}},
+};
+
+static void print_usage() {
     zero_arg();
     options();
     example();
+}
+
+int main(int argc, char** argv) {
+    const std::vector<std::string> args(argv + 1, argv + argc);
+
+    if (args.empty()) {
+        version();
+        print_usage();
+
+        return 0;
+    }
+
+    const std::string& command = args[0];
+    const std::vector<std::string> command_args(args.begin() + 1, args.end());
+
+    const auto command_it = commands.find(command);
+
+    if (command_it != commands.end()) {
+        const std::vector<CommandVariant>& variants = command_it->second;
+
+        const auto variant_it = std::find_if(
+            variants.begin(),
+            variants.end(),
+            [&](const CommandVariant& variant) { return variant.arg_count == command_args.size(); }
+        );
+
+        if (variant_it != variants.end()) {
+            return variant_it->handler(command_args);
+        }
+    }
+
+    print_usage();
 
     return 0;
 }

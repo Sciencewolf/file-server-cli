@@ -41,7 +41,6 @@ cmake-build-verify
 *.lib
 
 # Executables
-*.exe
 *.out
 *.app
 

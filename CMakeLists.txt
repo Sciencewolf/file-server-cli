@@ -65,30 +65,12 @@ add_executable(
     main.cpp
 )
 
-target_compile_definitions(
-    file_server_cli
-    PRIVATE
-    PROJECT_ROOT="${PROJECT_SOURCE_DIR}"
-)
-
 target_link_libraries(
     file_server_cli
     PRIVATE
     cpr::cpr
     nlohmann_json::nlohmann_json
 )
-
-# --------------------------------------------------
-# Windows / MinGW
-# --------------------------------------------------
-
-if(WIN32 AND MINGW)
-    target_link_options(
-        file_server_cli
-        PRIVATE
-        -no-pthread
-    )
-endif()
 
 # --------------------------------------------------
 # Output
