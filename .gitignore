@@ -10,6 +10,7 @@
 download
 .idea
 cmake-build-verify
+rpi
 
 .DS_Store
 
