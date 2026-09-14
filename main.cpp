@@ -43,23 +43,8 @@ namespace Color {
 }
 
 constexpr const char* VERSION = "v1.3.3";
-
-
-static json get_all_files() {
-    const std::string url = "https://files.martonaron.dev/all";
-
-    const cpr::Response res = cpr::Get(cpr::Url{url});
-
-    if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
-    }
-
-    if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
-    }
-
-    return json::parse(res.text);
-}
+constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
+constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
 
 static std::filesystem::path get_downloads_dir() {
 #if defined(_WIN32)
@@ -87,6 +72,22 @@ static std::filesystem::path get_downloads_dir() {
 
     return std::filesystem::path(home) / "Downloads";
 #endif
+}
+
+static json get_all_files() {
+    const std::string url = "https://files.martonaron.dev/all";
+
+    const cpr::Response res = cpr::Get(cpr::Url{url});
+
+    if (res.error) {
+        throw std::runtime_error("HTTP error: " + res.error.message);
+    }
+
+    if (res.status_code < 200 || res.status_code >= 300) {
+        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
+    }
+
+    return json::parse(res.text);
 }
 
 static void download_file(const std::string& file_name) {
@@ -210,6 +211,7 @@ static void rename_file(const std::string old_name_index, const std::string new_
     std::cout << Color::BLUE << response.at("info").get<std::string>() << Color::RESET << std::endl;
 }
 
+
 static int print_files() {
     try {
         std::cout << Color::BLUE << "Fetching file list..." << Color::RESET << std::flush;
@@ -280,8 +282,8 @@ static void example() {
 
 static const void about() {
     std::cout << Color::MAGENTA << VERSION << "\n\n" << Color::RESET;
-    std::cout << Color::CYAN << "File Server CLI - A simple command line interface for file management" << Color::RESET << std::endl;
-    std::cout << Color::CYAN << "GitHub: https://github.com/Sciencewolf/file-server-cli\n" << Color::RESET << std::endl;
+    std::cout << Color::CYAN << DESCRIPTION << Color::RESET << std::endl;
+    std::cout << Color::CYAN << GITHUB_URL << Color::RESET << std::endl;
 }
 
 static int handle_list(const std::vector<std::string>&) {
