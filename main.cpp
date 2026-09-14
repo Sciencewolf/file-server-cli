@@ -42,7 +42,7 @@ namespace Color {
     constexpr const char* RESET = "\033[0m";
 }
 
-constexpr const char* VERSION = "v1.4.0";
+constexpr const char* VERSION = "v1.4.1";
 constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
 constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
 
@@ -222,7 +222,7 @@ static int print_preview_url(int index) {
 
     std::cout << "\r\033[2K" << std::flush;
 
-    std::cout << Color::YELLOW << "Preview URL: " << url << Color::RESET << std::endl;
+    std::cout << Color::YELLOW << "WebViewLink: " << url << Color::RESET << std::endl;
 
     return 0;
 }
@@ -245,6 +245,8 @@ static int print_files() {
         std::cout << Color::RESET << std::endl;
     }
     catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
+
         std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
@@ -319,6 +321,8 @@ static int handle_preview(const std::vector<std::string>& args) {
         return print_preview_url(index);
     }
     catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
+
         std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
@@ -349,6 +353,7 @@ static int handle_delete(const std::vector<std::string>& args) {
         delete_file(filename);
     }
     catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
         std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
@@ -365,6 +370,8 @@ static int handle_download(const std::vector<std::string>& args) {
         const int index = std::stoi(args[0]) - 1;
 
         if (index < 0 || index >= static_cast<int>(files.size())) {
+            std::cout << "\r\033[2K" << std::flush;
+
             throw std::out_of_range("Invalid file index");
         }
 
@@ -373,6 +380,8 @@ static int handle_download(const std::vector<std::string>& args) {
         download_file(file_name);
     }
     catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
+
         std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
         return 1;
     }
@@ -395,6 +404,15 @@ static const std::unordered_map<std::string, std::vector<CommandVariant>> comman
     {"up",    {{1, handle_upload}}},
     {"prev", {{1, handle_preview}}},
     {"words", {{0, handle_words}}},
+
+    // - command versions
+    {"-l",    {{0, handle_list}}},
+    {"-g",   {{0, handle_list}, {1, handle_download}}},
+    {"-d",   {{0, handle_list}, {1, handle_delete}}},
+    {"-r",    {{0, handle_list}, {2, handle_rename}}},
+    {"-u",    {{1, handle_upload}}},
+    {"-p", {{1, handle_preview}}},
+    {"-w", {{0, handle_words}}},
 };
 
 static void print_usage() {
