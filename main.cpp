@@ -42,7 +42,7 @@ namespace Color {
     constexpr const char* RESET = "\033[0m";
 }
 
-constexpr const char* VERSION = "v1.3.3";
+constexpr const char* VERSION = "v1.4.0";
 constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
 constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
 
@@ -212,6 +212,21 @@ static void rename_file(const std::string old_name_index, const std::string new_
 }
 
 
+static int print_preview_url(int index) {
+    std::cout << Color::BLUE << "Fetching file list..." << Color::RESET << std::flush;
+
+    const json files = get_all_files().at("files");
+    const std::string filename = files.at(index - 1).at("name").get<std::string>();
+
+    const std::string url = std::format("https://files.martonaron.dev/data/{}", filename);
+
+    std::cout << "\r\033[2K" << std::flush;
+
+    std::cout << Color::YELLOW << "Preview URL: " << url << Color::RESET << std::endl;
+
+    return 0;
+}
+
 static int print_files() {
     try {
         std::cout << Color::BLUE << "Fetching file list..." << Color::RESET << std::flush;
@@ -247,7 +262,8 @@ static void options() {
     const std::string opt3 = "up <path_to_file>";
     const std::string opt4 = "del <filename_index>";
     const std::string opt5 = "rn <old_filename_index> <new_filename>";
-    const std::string opt6 = "words";
+    const std::string opt6 = "prev <filename_index>";
+    const std::string opt7 = "words";
 
     std::cout << Color::GREEN << "\nOptions: " << std::endl;
     std::cout << "\t> " << opt1 << std::endl;
@@ -255,11 +271,12 @@ static void options() {
     std::cout << "\t> " << opt3 << std::endl;
     std::cout << "\t> " << opt4 << std::endl;
     std::cout << "\t> " << opt5 << std::endl;
-    std::cout << "\t> " << opt6 << Color::RESET << std::endl;
+    std::cout << "\t> " << opt6 << std::endl;
+    std::cout << "\t> " << opt7 << Color::RESET << std::endl;
 }
 
 static void keywords() {
-    const std::vector<std::string> ls_keywords = {"get", "up", "del", "ls", "rn", "words"};
+    const std::vector<std::string> ls_keywords = {"get", "up", "del", "ls", "rn", "prev", "words"};
 
     std::cout << Color::GREEN << "Keywords: \n" << std::endl;
 
@@ -276,8 +293,9 @@ static void example() {
     const std::string ex3 = "\t> fscli rn 1 'new_file'\n";
     const std::string ex4 = "\t> fscli up 'path_to_file'\n";
     const std::string ex5 = "\t> fscli del 1\n";
+    const std::string ex6 = "\t> fscli prev 1\n";
 
-    std::cout << Color::YELLOW << "Example: \n" << ex1 << ex2 << ex3 << ex4 << ex5 << Color::RESET;
+    std::cout << Color::YELLOW << "Example: \n" << ex1 << ex2 << ex3 << ex4 << ex5 << ex6 << Color::RESET;
 }
 
 static const void about() {
@@ -293,6 +311,17 @@ static int handle_list(const std::vector<std::string>&) {
 static int handle_words(const std::vector<std::string>&) {
     keywords();
     return 0;
+}
+
+static int handle_preview(const std::vector<std::string>& args) {
+    try {
+        const int index = std::stoi(args[0]);
+        return print_preview_url(index);
+    }
+    catch (const std::exception& e) {
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
+        return 1;
+    }
 }
 
 static int handle_upload(const std::vector<std::string>& args) {
@@ -364,6 +393,7 @@ static const std::unordered_map<std::string, std::vector<CommandVariant>> comman
     {"del",   {{0, handle_list}, {1, handle_delete}}},
     {"rn",    {{0, handle_list}, {2, handle_rename}}},
     {"up",    {{1, handle_upload}}},
+    {"prev", {{1, handle_preview}}},
     {"words", {{0, handle_words}}},
 };
 
