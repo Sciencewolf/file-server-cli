@@ -255,17 +255,17 @@ static int print_files() {
 }
 
 static void zero_arg() {
-    std::cout << Color::BLUE << "Usage: fscli <option>" << Color::RESET;
+    std::cout << Color::BLUE << "Usage: fscli <option>\n" << Color::RESET;
 }
 
 static void options() {
-    const std::string opt1 = "ls";
-    const std::string opt2 = "get <filename_index>";
-    const std::string opt3 = "up <path_to_file>";
-    const std::string opt4 = "del <filename_index>";
-    const std::string opt5 = "rn <old_filename_index> <new_filename>";
-    const std::string opt6 = "prev <filename_index>";
-    const std::string opt7 = "words";
+    const std::string opt1 = "[ls, -l]";
+    const std::string opt2 = "[get, -g] <filename_index>";
+    const std::string opt3 = "[up, -u] <path_to_file>";
+    const std::string opt4 = "[del, -d] <filename_index>";
+    const std::string opt5 = "[rn, -r] <old_filename_index> <new_filename>";
+    const std::string opt6 = "[prev, -p] <filename_index>";
+    const std::string opt7 = "[words, -w]";
 
     std::cout << Color::GREEN << "\nOptions: " << std::endl;
     std::cout << "\t> " << opt1 << std::endl;
