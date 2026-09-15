@@ -42,7 +42,7 @@ namespace Color {
     constexpr const char* RESET = "\033[0m";
 }
 
-constexpr const char* VERSION = "v1.4.1";
+constexpr const char* VERSION = "v1.4.2";
 constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
 constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
 
