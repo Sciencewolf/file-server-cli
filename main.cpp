@@ -363,15 +363,11 @@ static int handle_delete(const std::vector<std::string>& args) {
 
 static int handle_download(const std::vector<std::string>& args) {
     try {
-        std::cout << Color::BLUE << "Downloading file..." << Color::RESET << std::flush;
-
         const json files = get_all_files().at("files");
 
         const int index = std::stoi(args[0]) - 1;
 
         if (index < 0 || index >= static_cast<int>(files.size())) {
-            std::cout << "\r\033[2K" << std::flush;
-
             throw std::out_of_range("Invalid file index");
         }
 
