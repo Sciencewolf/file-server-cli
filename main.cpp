@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -33,18 +34,51 @@ static void enable_ansi_colors() {
 #endif
 
 namespace Color {
-    constexpr const char* RED = "\e[1;91m";
-    constexpr const char* GREEN = "\e[1;92m";
-    constexpr const char* YELLOW = "\e[1;93m";
-    constexpr const char* BLUE = "\e[1;94m";
-    constexpr const char* MAGENTA = "\e[1;95m";
-    constexpr const char* CYAN = "\e[1;96m";
+    constexpr const char* RED = "\033[1;91m";
+    constexpr const char* GREEN = "\033[1;92m";
+    constexpr const char* YELLOW = "\033[1;93m";
+    constexpr const char* BLUE = "\033[1;94m";
+    constexpr const char* MAGENTA = "\033[1;95m";
+    constexpr const char* CYAN = "\033[1;96m";
     constexpr const char* RESET = "\033[0m";
 }
 
-constexpr const char* VERSION = "v1.4.2";
+constexpr const char* VERSION = "v1.4.3";
 constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
 constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
+
+static std::string url_encode(const std::string& value) {
+    constexpr char hex[] = "0123456789ABCDEF";
+    std::string encoded;
+    encoded.reserve(value.size());
+
+    for (const unsigned char ch : value) {
+        if (std::isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~') {
+            encoded.push_back(static_cast<char>(ch));
+        }
+        else {
+            encoded.push_back('%');
+            encoded.push_back(hex[ch >> 4]);
+            encoded.push_back(hex[ch & 0x0F]);
+        }
+    }
+
+    return encoded;
+}
+
+static std::size_t parse_file_index(const std::string& index_arg, const json& files) {
+    if (index_arg.empty() || !std::ranges::all_of(index_arg, [](const unsigned char ch) { return std::isdigit(ch); })) {
+        throw std::invalid_argument("Invalid file index");
+    }
+
+    const unsigned long long index = std::stoull(index_arg);
+
+    if (index < 1 || index > static_cast<unsigned long long>(files.size())) {
+        throw std::out_of_range("Invalid file index");
+    }
+
+    return static_cast<std::size_t>(index - 1);
+}
 
 static std::filesystem::path get_downloads_dir() {
 #if defined(_WIN32)
@@ -93,7 +127,7 @@ static json get_all_files() {
 static void download_file(const std::string& file_name) {
     std::cout << Color::BLUE << "Downloading file..." << Color::RESET << std::flush;
     
-    const std::string url = std::format("https://files.martonaron.dev/get/{}", file_name);
+    const std::string url = std::format("https://files.martonaron.dev/get/{}", url_encode(file_name));
 
     const std::filesystem::path download_dir = get_downloads_dir();
 
@@ -131,6 +165,12 @@ static void download_file(const std::string& file_name) {
 static void upload_file(const std::string& path) {
     std::cout << Color::BLUE << "Uploading file..." << Color::RESET << std::flush;
 
+    const std::filesystem::path file_path(path);
+
+    if (!std::filesystem::is_regular_file(file_path)) {
+        throw std::runtime_error("File does not exist or is not a regular file: " + path);
+    }
+
     const std::string url = "https://files.martonaron.dev/upload";
 
     cpr::Response res = cpr::Post(cpr::Url{url}, cpr::Multipart{{"file", cpr::File{path}}});
@@ -152,7 +192,7 @@ static void upload_file(const std::string& path) {
 static void delete_file(const std::string& filename) {
     std::cout << Color::BLUE << "Deleting file..." << Color::RESET << std::flush;
 
-    const std::string url = std::format("https://files.martonaron.dev/delete/{}", filename);
+    const std::string url = std::format("https://files.martonaron.dev/delete/{}", url_encode(filename));
 
     const cpr::Response res = cpr::Delete(cpr::Url{url});
 
@@ -182,11 +222,25 @@ static void rename_file(const std::string old_name_index, const std::string new_
 
     const json files = get_all_files().at("files");
 
-    const std::string old_name = files.at(std::stoi(old_name_index) - 1).at("name").get<std::string>();
+    const std::size_t index = parse_file_index(old_name_index, files);
+    const std::string old_name = files.at(index).at("name").get<std::string>();
 
-    std::string new_name_sanitized = std::format("{}.{}", new_name, old_name.substr(old_name.find_last_of('.') + 1));
+    if (new_name.empty()) {
+        throw std::invalid_argument("New file name cannot be empty");
+    }
 
-    const std::string url = std::format("https://files.martonaron.dev/rename/{}?val={}", old_name, new_name_sanitized);
+    std::string new_name_sanitized = new_name;
+    const std::size_t extension_pos = old_name.find_last_of('.');
+
+    if (extension_pos != std::string::npos && extension_pos + 1 < old_name.size()) {
+        new_name_sanitized = std::format("{}.{}", new_name, old_name.substr(extension_pos + 1));
+    }
+
+    const std::string url = std::format(
+        "https://files.martonaron.dev/rename/{}?val={}",
+        url_encode(old_name),
+        url_encode(new_name_sanitized)
+    );
 
     const cpr::Response res = cpr::Get(cpr::Url{url});
 
@@ -212,13 +266,14 @@ static void rename_file(const std::string old_name_index, const std::string new_
 }
 
 
-static int print_preview_url(int index) {
+static int print_preview_url(const std::string& index_arg) {
     std::cout << Color::BLUE << "Fetching file list..." << Color::RESET << std::flush;
 
     const json files = get_all_files().at("files");
-    const std::string filename = files.at(index - 1).at("name").get<std::string>();
+    const std::size_t file_index = parse_file_index(index_arg, files);
+    const std::string filename = files.at(file_index).at("name").get<std::string>();
 
-    const std::string url = std::format("https://files.martonaron.dev/data/{}", filename);
+    const std::string url = std::format("https://files.martonaron.dev/data/{}", url_encode(filename));
 
     std::cout << "\r\033[2K" << std::flush;
 
@@ -239,7 +294,7 @@ static int print_files() {
         std::cout << Color::YELLOW << std::endl;
 
         for (const auto& file : files) {
-            std::cout << cnt++ << ": " << file["name"] << std::endl;
+            std::cout << cnt++ << ": " << file.at("name").get<std::string>() << std::endl;
         }
 
         std::cout << Color::RESET << std::endl;
@@ -300,7 +355,7 @@ static void example() {
     std::cout << Color::YELLOW << "Example: \n" << ex1 << ex2 << ex3 << ex4 << ex5 << ex6 << Color::RESET;
 }
 
-static const void about() {
+static void about() {
     std::cout << Color::MAGENTA << VERSION << "\n\n" << Color::RESET;
     std::cout << Color::CYAN << DESCRIPTION << Color::RESET << std::endl;
     std::cout << Color::CYAN << GITHUB_URL << Color::RESET << std::endl;
@@ -317,8 +372,7 @@ static int handle_words(const std::vector<std::string>&) {
 
 static int handle_preview(const std::vector<std::string>& args) {
     try {
-        const int index = std::stoi(args[0]);
-        return print_preview_url(index);
+        return print_preview_url(args[0]);
     }
     catch (const std::exception& e) {
         std::cout << "\r\033[2K" << std::flush;
@@ -329,12 +383,30 @@ static int handle_preview(const std::vector<std::string>& args) {
 }
 
 static int handle_upload(const std::vector<std::string>& args) {
-    upload_file(args[0]);
+    try {
+        upload_file(args[0]);
+    }
+    catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
+
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
+        return 1;
+    }
+
     return 0;
 }
 
 static int handle_rename(const std::vector<std::string>& args) {
-    rename_file(args[0], args[1]);
+    try {
+        rename_file(args[0], args[1]);
+    }
+    catch (const std::exception& e) {
+        std::cout << "\r\033[2K" << std::flush;
+
+        std::cerr << Color::RED << "Error: " << e.what() << Color::RESET << '\n';
+        return 1;
+    }
+
     return 0;
 }
 
@@ -342,12 +414,7 @@ static int handle_delete(const std::vector<std::string>& args) {
     try {
         const json files = get_all_files().at("files");
 
-        const int index = std::stoi(args[0]) - 1;
-
-        if (index < 0 || index >= static_cast<int>(files.size())) {
-            throw std::out_of_range("Invalid file index");
-        }
-
+        const std::size_t index = parse_file_index(args[0], files);
         const std::string filename = files.at(index).at("name").get<std::string>();
 
         delete_file(filename);
@@ -365,12 +432,7 @@ static int handle_download(const std::vector<std::string>& args) {
     try {
         const json files = get_all_files().at("files");
 
-        const int index = std::stoi(args[0]) - 1;
-
-        if (index < 0 || index >= static_cast<int>(files.size())) {
-            throw std::out_of_range("Invalid file index");
-        }
-
+        const std::size_t index = parse_file_index(args[0], files);
         const std::string file_name = files.at(index).at("name").get<std::string>();
 
         download_file(file_name);
@@ -455,5 +517,5 @@ int main(int argc, char** argv) {
 
     print_usage();
 
-    return 0;
+    return 1;
 }
