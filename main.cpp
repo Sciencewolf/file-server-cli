@@ -43,7 +43,7 @@ namespace Color {
     constexpr const char* RESET = "\033[0m";
 }
 
-constexpr const char* VERSION = "v1.4.3";
+constexpr const char* VERSION = "v1.4.5";
 constexpr const char* DESCRIPTION = "File Server CLI - A simple command line interface for file management";
 constexpr const char* GITHUB_URL = "GitHub: https://github.com/Sciencewolf/file-server-cli\n";
 
@@ -108,17 +108,38 @@ static std::filesystem::path get_downloads_dir() {
 #endif
 }
 
+static bool server_state() {
+    const std::string url = "https://files.martonaron.dev/connection";
+
+    try {
+        const cpr::Response res = cpr::Get(cpr::Url{url});
+
+        if (res.error) {
+            throw std::runtime_error("Server connection error: " + res.error.message);
+        }
+
+        if (res.status_code < 200 || res.status_code >= 300) {
+            throw std::runtime_error("Server is down");
+        }
+    }
+    catch (const std::exception& e) {
+        return false;
+    }
+
+    return true;
+}
+
 static json get_all_files() {
     const std::string url = "https://files.martonaron.dev/all";
 
     const cpr::Response res = cpr::Get(cpr::Url{url});
 
     if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
+        throw std::runtime_error("Server connection error: " + res.error.message);
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
+        throw std::runtime_error(std::format("Server is down: {}", res.status_code));
     }
 
     return json::parse(res.text);
@@ -150,11 +171,11 @@ static void download_file(const std::string& file_name) {
     const cpr::Response res = cpr::Download(file, cpr::Url{url});
 
     if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
+        throw std::runtime_error("Server connection error: " + res.error.message);
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
+        throw std::runtime_error(std::format("Server is down: {}", res.status_code));
     }
 
     std::cout << "\r\033[2K" << std::flush;
@@ -176,11 +197,11 @@ static void upload_file(const std::string& path) {
     cpr::Response res = cpr::Post(cpr::Url{url}, cpr::Multipart{{"file", cpr::File{path}}});
 
     if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
+        throw std::runtime_error("Server connection error: " + res.error.message);
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
-        throw std::runtime_error(std::format("HTTP status error: {}", res.status_code));
+        throw std::runtime_error(std::format("Server is down: {}", res.status_code));
     }
 
     std::cout << "\r\033[2K" << std::flush;
@@ -197,13 +218,13 @@ static void delete_file(const std::string& filename) {
     const cpr::Response res = cpr::Delete(cpr::Url{url});
 
     if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
+        throw std::runtime_error("Server connection error: " + res.error.message);
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
         throw std::runtime_error(
             std::format(
-                "HTTP status error: {} - {}",
+                "Server is down: {} - {}",
                 res.status_code,
                 res.text
             )
@@ -245,13 +266,13 @@ static void rename_file(const std::string old_name_index, const std::string new_
     const cpr::Response res = cpr::Get(cpr::Url{url});
 
     if (res.error) {
-        throw std::runtime_error("HTTP error: " + res.error.message);
+        throw std::runtime_error("Server connection error: " + res.error.message);
     }
 
     if (res.status_code < 200 || res.status_code >= 300) {
         throw std::runtime_error(
             std::format(
-                "HTTP status error: {} - {}",
+                "Server is down: {} - {}",
                 res.status_code,
                 res.text
             )
@@ -358,7 +379,7 @@ static void example() {
 static void about() {
     std::cout << Color::MAGENTA << VERSION << "\n\n" << Color::RESET;
     std::cout << Color::CYAN << DESCRIPTION << Color::RESET << std::endl;
-    std::cout << Color::CYAN << GITHUB_URL << Color::RESET << std::endl;
+    std::cout << Color::CYAN << GITHUB_URL << Color::RESET;
 }
 
 static int handle_list(const std::vector<std::string>&) {
@@ -486,13 +507,17 @@ int main(int argc, char** argv) {
 
     const std::vector<std::string> args(argv + 1, argv + argc);
 
-    if (args.empty()) {
-        std::cout << "Loading..." << std::flush;
-        std::cout << "\r\033[2K" << std::flush;
+    if (!server_state()) {
+        std::cerr << Color::RED << "Server is offline\n" << Color::RESET << std::endl;
+        about();
 
+        return 1;
+    }
+
+    if (args.empty()) {
+        std::cout << Color::GREEN << "Server is online" << Color::RESET << std::endl;
         about();
         print_usage();
-
         return 0;
     }
 
@@ -516,6 +541,5 @@ int main(int argc, char** argv) {
     }
 
     print_usage();
-
     return 1;
 }
